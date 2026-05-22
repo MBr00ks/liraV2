@@ -1,0 +1,60 @@
+services:
+  # PostgreSQL — structured memory (6 layers: identity, relationship, lore, project, episodic, technical)
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: lira-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lira}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lira_password}
+      POSTGRES_DB: ${POSTGRES_DB:-lira_v2}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./tools/scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lira} -d ${POSTGRES_DB:-lira_v2}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin — web-based PostgreSQL table viewer (Supabase-like experience)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: lira-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@liradb.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Qdrant — vector memory for semantic search
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: lira-qdrant
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:-}
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6333/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  qdrant_data:

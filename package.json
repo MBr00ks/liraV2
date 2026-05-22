@@ -1,0 +1,28 @@
+{
+  "name": "lira-v2",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lira V2 — Persistent orchestrated AI companion",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "db:migrate": "npm run db:migrate --workspace=packages/memory",
+    "db:seed": "npm run db:seed --workspace=packages/memory"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1"
+  }
+}

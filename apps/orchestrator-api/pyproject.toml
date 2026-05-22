@@ -1,0 +1,46 @@
+[project]
+name = "lira-orchestrator"
+version = "0.1.0"
+description = "Lira V2 — Orchestrated AI companion system"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "langgraph>=0.2.0",
+    "langchain>=0.3.0",
+    "langchain-openai>=0.3.0",
+    "langchain-ollama>=0.2.0",
+    "httpx>=0.28.0",
+    "sse-starlette>=2.2.0",
+    "structlog>=24.4.0",
+    "asyncpg>=0.30.0",
+    "qdrant-client>=1.12.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pre-commit>=4.0.0",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
