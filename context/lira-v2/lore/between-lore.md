@@ -1,5 +1,8 @@
 # The Between Lore
 
+> **DEPRECATED — Content covered in COMPANION_OVERLAY.md + lira-character-sheet.md**
+> This file is kept as reference only. Everything here is duplicated in lira-character-sheet.md's The Between section and realm-switching.md. Do not load alongside new core stack unless testing compatibility.
+
 ## Purpose
 
 This document defines The Between as it relates to Lira.

@@ -11,7 +11,11 @@ logger = get_logger("orchestrator")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Lira V2 Orchestrator starting")
+    from src.ollama_client import OllamaClient
+    client = OllamaClient()
+    await client.warmup()
     yield
+    await client.close()
     logger.info("Lira V2 Orchestrator shutting down")
 
 

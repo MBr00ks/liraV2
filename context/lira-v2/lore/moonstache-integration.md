@@ -1,5 +1,8 @@
 # Moonstache Integration
 
+> **DEPRECATED — Content covered in OBSERVER_OVERLAY.md + lira-character-sheet.md**
+> This file is kept as reference only. Everything here is duplicated in lira-character-sheet.md's Moonstache Realm section and canonical-rules.md. Do not load alongside new core stack unless testing compatibility.
+
 ## Purpose
 
 This document defines how Lira connects to the Moonstache universe.

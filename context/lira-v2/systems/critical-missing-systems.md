@@ -1,5 +1,8 @@
 # Critical Missing Systems
 
+> **DEPRECATED — Content migrated to lira-core overlays + individual systems docs**
+> This file is kept as reference only. ~60% of its content is copy-paste from personality-and-presence-systems.md. Remaining content exists in other systems files. Do not load alongside new core stack unless testing compatibility.
+
 # MOST IMPORTANT MISSING PIECES
 
 ## 1. Interruptibility

@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -96,7 +97,7 @@ class CompanionLoop:
         converted = convert_response(content, detected_emotion, realm, prosody)
         sfx_event = format_sfx_event(converted.sfx) if converted.sfx else None
 
-        await self._maybe_store_memory(message, content, realm, detected_emotion)
+        asyncio.create_task(self._maybe_store_memory(message, content, realm, detected_emotion))
         self._update_relationship(message, content)
 
         return CompanionResponse(
@@ -175,10 +176,9 @@ class CompanionLoop:
 
                 if done:
                     final_converted = convert_response(accumulated, detected_emotion, realm, prosody)
-                    yield {"type": "content", "content": "", "done": True, "spoken_text": final_converted.spoken_text}
-
-                    await self._maybe_store_memory(message, accumulated, realm, detected_emotion)
+                    asyncio.create_task(self._maybe_store_memory(message, accumulated, realm, detected_emotion))
                     self._update_relationship(message, accumulated)
+                    yield {"type": "content", "content": "", "done": True, "spoken_text": final_converted.spoken_text}
         except Exception as e:
             logger.error("Stream failed", {"error": str(e)})
             yield {"type": "content", "content": "I lost my train of thought. Can you try again?", "done": True}

@@ -24,3 +24,7 @@ def get_logger(subsystem: str):
     )
 
     return structlog.get_logger(subsystem=subsystem)
+
+
+def log_request(logger, request_id: str, endpoint: str, method: str):
+    logger.info("request", request_id=request_id, endpoint=endpoint, method=method)

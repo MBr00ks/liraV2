@@ -25,6 +25,8 @@ class KokoroClient:
         self.default_speed = settings.kokoro_speed
         self.default_pitch = settings.kokoro_pitch
         self.default_volume = settings.kokoro_volume
+        self._client = httpx.AsyncClient(timeout=30.0)
+        self._stream_client = httpx.AsyncClient(timeout=60.0)
 
     async def synthesize(
         self,
@@ -43,10 +45,9 @@ class KokoroClient:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(f"{self.base_url}/synthesize", json=payload)
-                response.raise_for_status()
-                result = response.json()
+            response = await self._client.post(f"{self.base_url}/synthesize", json=payload)
+            response.raise_for_status()
+            result = response.json()
 
             return TTSResult(
                 audio_base64=result["audio"],
@@ -57,6 +58,27 @@ class KokoroClient:
         except httpx.HTTPError as e:
             logger.error("Kokoro TTS failed", {"error": str(e), "text_length": len(text)})
             raise RuntimeError(f"TTS service unavailable: {e}")
+
+    async def synthesize_raw(
+        self,
+        text: str,
+        voice: Optional[str] = None,
+        speed: Optional[float] = None,
+    ) -> bytes:
+        payload = {
+            "input": text,
+            "voice": voice or self.default_voice,
+            "speed": speed if speed is not None else self.default_speed,
+            "response_format": "wav",
+        }
+
+        try:
+            response = await self._client.post(f"{self.base_url}/v1/audio/speech", json=payload)
+            response.raise_for_status()
+            return response.content
+        except httpx.HTTPError as e:
+            logger.error("Kokoro raw TTS failed", {"error": str(e), "text_length": len(text)})
+            raise RuntimeError(f"TTS raw unavailable: {e}")
 
     async def synthesize_stream(
         self,
@@ -72,19 +94,21 @@ class KokoroClient:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                async with client.stream("POST", f"{self.base_url}/synthesize", json=payload) as response:
-                    response.raise_for_status()
-                    async for chunk in response.aiter_bytes():
-                        yield chunk
+            async with self._stream_client.stream("POST", f"{self.base_url}/synthesize", json=payload) as response:
+                response.raise_for_status()
+                async for chunk in response.aiter_bytes():
+                    yield chunk
         except httpx.HTTPError as e:
             logger.error("Kokoro TTS stream failed", {"error": str(e)})
             raise RuntimeError(f"TTS stream unavailable: {e}")
 
     async def health_check(self) -> bool:
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(f"{self.base_url}/health")
-                return response.status_code == 200
+            response = await self._client.get(f"{self.base_url}/health")
+            return response.status_code == 200
         except Exception:
             return False
+
+    async def close(self):
+        await self._client.aclose()
+        await self._stream_client.aclose()

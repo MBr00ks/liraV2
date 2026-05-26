@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     ollama_memory_model: str = "mistral-nemo:12b"
     ollama_narrative_model: str = "qwen3:32b"
     ollama_embedding_model: str = "nomic-embed-text"
+    ollama_keep_alive: str = "5m"
 
     openai_api_key: str = ""
     openai_model: str = "gpt-4.1"

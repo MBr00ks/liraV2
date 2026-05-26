@@ -1,5 +1,6 @@
 import re
 import asyncio
+import base64
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -10,14 +11,17 @@ from src.logging import get_logger
 
 logger = get_logger("hybrid-audio")
 
-ACTION_PATTERN = re.compile(r"\*(\w+)\*")
+ACTION_PATTERN = re.compile(r"\*(.+?)\*")
+SENTENCE_PATTERN = re.compile(r"(.*?[.?!\n]+\s*|.+)")
+
+MIN_CHUNK_CHARS = 40
+MAX_CHUNK_CHARS = 180
 
 
 @dataclass
 class AudioOutput:
     tts_result: Optional[TTSResult] = None
     reaction_file: Optional[str] = None
-    breathing_file: Optional[str] = None
     total_duration_ms: float = 0.0
 
 
@@ -26,7 +30,6 @@ class HybridAudioPipeline:
         self.tts = KokoroClient()
         self.queue = AudioQueue()
         self.reactions = ReactionSoundEngine()
-        self._breathing_enabled = True
 
     async def process_text(self, text: str, voice: Optional[str] = None) -> list[AudioOutput]:
         cleaned_text, actions = self._extract_actions(text)
@@ -38,12 +41,17 @@ class HybridAudioPipeline:
             if reaction_file:
                 outputs.append(AudioOutput(reaction_file=reaction_file))
 
-        if cleaned_text.strip():
+        if not cleaned_text.strip():
+            return outputs
+
+        chunks = self._split_sentences(cleaned_text.strip())
+
+        for chunk in chunks:
             try:
-                tts_result = await self.tts.synthesize(cleaned_text.strip(), voice=voice)
+                tts_result = await self.tts.synthesize(chunk, voice=voice)
                 outputs.append(AudioOutput(tts_result=tts_result, total_duration_ms=tts_result.duration_ms))
             except Exception as e:
-                logger.error("TTS synthesis failed", {"error": str(e)})
+                logger.error("TTS chunk failed", {"error": str(e), "chunk": chunk[:50]})
 
         return outputs
 
@@ -52,10 +60,9 @@ class HybridAudioPipeline:
 
         for output in outputs:
             if output.tts_result:
-                import base64
                 audio_data = base64.b64decode(output.tts_result.audio_base64)
                 item = AudioItem(
-                    id=f"tts_{len(text)}",
+                    id=f"tts_{id(output)}",
                     audio_data=audio_data,
                     duration_ms=output.tts_result.duration_ms,
                     interruptible=True,
@@ -79,6 +86,51 @@ class HybridAudioPipeline:
 
         return len(outputs) > 0
 
+    async def process_and_queue_stream(self, text: str, voice: Optional[str] = None) -> bool:
+        """Stream TTS audio per-sentence. Enqueues each sentence's audio as it arrives
+        so playback can start before the full text is synthesized."""
+        cleaned_text, actions = self._extract_actions(text)
+
+        enqueued = False
+
+        for action in actions:
+            reaction_file = self.reactions.get_reaction_for_action(action)
+            if reaction_file:
+                try:
+                    with open(reaction_file, "rb") as f:
+                        item = AudioItem(
+                            id=f"reaction_{reaction_file}",
+                            audio_data=f.read(),
+                            duration_ms=500,
+                            priority=1,
+                            interruptible=False,
+                        )
+                    await self.queue.enqueue(item)
+                    enqueued = True
+                except FileNotFoundError:
+                    pass
+
+        if not cleaned_text.strip():
+            return enqueued
+
+        chunks = self._split_sentences(cleaned_text.strip())
+
+        for i, chunk in enumerate(chunks):
+            try:
+                async for audio_chunk in self.tts.synthesize_stream(chunk, voice=voice):
+                    item = AudioItem(
+                        id=f"stream_{id(chunk)}_{i}",
+                        audio_data=audio_chunk,
+                        duration_ms=0,
+                        interruptible=True,
+                    )
+                    await self.queue.enqueue(item)
+                    enqueued = True
+            except Exception as e:
+                logger.error("TTS stream chunk failed", {"error": str(e), "chunk": chunk[:50]})
+
+        return enqueued
+
     async def interrupt(self) -> None:
         await self.queue.interrupt()
         logger.info("Hybrid audio interrupted")
@@ -86,7 +138,22 @@ class HybridAudioPipeline:
     def _extract_actions(self, text: str) -> tuple[str, list[str]]:
         actions = ACTION_PATTERN.findall(text)
         cleaned = ACTION_PATTERN.sub("", text).strip()
-        return cleaned, [a.lower() for a in actions]
+        return cleaned, [a.strip().lower() for a in actions]
+
+    def _split_sentences(self, text: str) -> list[str]:
+        raw = SENTENCE_PATTERN.findall(text)
+        raw = [s.strip() for s in raw if s.strip()]
+
+        chunks = []
+        for segment in raw:
+            if not chunks:
+                chunks.append(segment)
+            elif len(chunks[-1]) < MIN_CHUNK_CHARS:
+                chunks[-1] += " " + segment
+            else:
+                chunks.append(segment)
+
+        return chunks
 
     async def health_check(self) -> dict[str, bool]:
         return {
@@ -94,3 +161,6 @@ class HybridAudioPipeline:
             "reactions": self.reactions.health_check(),
             "queue": self.queue.queue_size < self.queue._max_size,
         }
+
+    async def close(self):
+        await self.tts.close()

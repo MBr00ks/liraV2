@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     reaction_sound_dir: str = "public/audio/reactions"
     breathing_sound_dir: str = "public/audio/breathing"
 
+    obs_host: str = "localhost"
+    obs_port: int = 4455
+    obs_password: str = ""
+    obs_enabled: bool = False
+    obs_tts_source: str = "Kokoro TTS"
+
     log_level: str = "info"
 
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]

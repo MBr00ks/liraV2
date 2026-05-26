@@ -40,6 +40,13 @@ async def transcribe_audio(file: UploadFile = File(...), language: Optional[str]
     request_id = str(uuid.uuid4())
     log_request(logger, request_id, endpoint="audio/stt", method="POST")
 
+    # Interrupt any ongoing TTS playback when user starts speaking
+    try:
+        pipeline = HybridAudioPipeline()
+        await pipeline.interrupt()
+    except Exception:
+        pass
+
     try:
         import tempfile
         import os

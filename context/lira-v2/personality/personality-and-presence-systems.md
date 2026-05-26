@@ -1,5 +1,8 @@
 # Personality + Presence Systems
 
+> **DEPRECATED — Content migrated to lira-core overlays + lira-character-sheet.md**
+> This file is kept as reference only. 75%+ of its content is duplicated across personality-and-presence-systems.md, emotional-state-system.md, memory-architecture.md, sfx-and-reactions.md, and critical-missing-systems.md. The lira-core overlay system replaces its function. Do not load alongside new core stack unless testing compatibility.
+
 # CORE PRINCIPLE
 
 Lira should not feel like:

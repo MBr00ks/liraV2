@@ -13,6 +13,7 @@ class OllamaClient:
         settings = get_settings()
         self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
         self.model = model or settings.ollama_model
+        self.keep_alive = settings.ollama_keep_alive
         self._client = httpx.AsyncClient(timeout=120.0)
         logger.info("OllamaClient initialized", {"base_url": self.base_url, "model": self.model})
 
@@ -21,59 +22,43 @@ class OllamaClient:
             "model": self.model,
             "messages": messages,
             "stream": False,
+            "keep_alive": self.keep_alive,
             "options": {
                 "temperature": temperature,
                 "num_predict": max_tokens,
                 "think": False,
             },
         }
-        logger.info("Ollama chat request", {"model": self.model, "message_count": len(messages)})
-        logger.debug("Messages sent to Ollama", {"messages": messages})
-
-        try:
-            response = await self._client.post(f"{self.base_url}/api/chat", json=payload)
-            response.raise_for_status()
-            data = response.json()
-            content = data.get("message", {}).get("content", "")
-            return {"content": content, "model": self.model}
-        except httpx.HTTPStatusError as e:
-            logger.error("Ollama HTTP error", {"status": e.response.status_code, "body": e.response.text})
-            raise
-        except Exception as e:
-            logger.error("Ollama request failed", {"error": str(e)})
-            raise
 
     async def stream_chat(self, messages: list[dict[str, str]], temperature: float = 0.7, max_tokens: int = 2048) -> AsyncGenerator[dict, None]:
         payload = {
             "model": self.model,
             "messages": messages,
             "stream": True,
+            "keep_alive": self.keep_alive,
             "options": {
                 "temperature": temperature,
                 "num_predict": max_tokens,
                 "think": False,
             },
         }
-        logger.info("Ollama stream chat request", {"model": self.model})
 
+    async def warmup(self) -> bool:
+        """Pre-load the model into Ollama's memory with a minimal request."""
         try:
-            async with self._client.stream("POST", f"{self.base_url}/api/chat", json=payload) as response:
-                response.raise_for_status()
-                async for line in response.aiter_lines():
-                    if not line:
-                        continue
-                    try:
-                        chunk = json.loads(line)
-                        content = chunk.get("message", {}).get("content", "")
-                        done = chunk.get("done", False)
-                        yield {"content": content, "done": done}
-                        if done:
-                            break
-                    except json.JSONDecodeError:
-                        continue
+            response = await self._client.post(f"{self.base_url}/api/generate", json={
+                "model": self.model,
+                "prompt": "Hello",
+                "keep_alive": self.keep_alive,
+                "stream": False,
+                "options": {"num_predict": 1},
+            })
+            response.raise_for_status()
+            logger.info("Ollama model warmed up", {"model": self.model})
+            return True
         except Exception as e:
-            logger.error("Ollama stream failed", {"error": str(e)})
-            yield {"content": "", "done": True}
+            logger.warn("Ollama warmup failed", {"error": str(e)})
+            return False
 
     async def close(self):
         await self._client.aclose()

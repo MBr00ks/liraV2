@@ -1,7 +1,7 @@
 [project]
-name = "lira-voice-runtime"
+name = "lira-memory-service"
 version = "0.1.0"
-description = "Lira V2 — Voice runtime (STT + TTS + audio mixing)"
+description = "Lira V2 — Memory service (vector storage, summarization, ST integration)"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",
@@ -9,11 +9,9 @@ dependencies = [
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
     "httpx>=0.28.0",
-    "numpy>=2.2.0",
-    "soundfile>=0.13.0",
+    "qdrant-client>=1.13.0",
     "structlog>=24.4.0",
     "python-dotenv>=1.0.0",
-    "websockets>=14.0",
     "python-multipart>=0.0.18",
 ]
 
@@ -21,7 +19,6 @@ dependencies = [
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
-    "pytest-cov>=6.0.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
 ]
@@ -32,10 +29,6 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
 
 [tool.mypy]
 strict = true

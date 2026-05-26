@@ -20,7 +20,7 @@ REACTION_MAPPING = {
     "sniffle": ["sniffle_01.wav"],
 }
 
-ACTION_PATTERN = re.compile(r"\*(\w+)\*")
+ACTION_PATTERN = re.compile(r"\*(.+?)\*")
 
 
 @dataclass

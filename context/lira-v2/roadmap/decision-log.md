@@ -255,3 +255,23 @@ Using SillyTavern speeds experimentation but requires a later migration path.
 #### Follow-up Work
 
 Create a SillyTavern bridge strategy and define what data can migrate from Tavern into Lira Core.
+
+---
+
+## 2026-05-24 — Architectural Refactor: lira-core Overlay System
+
+**Decision:** Created `/context/lira-core/` as the primary behavioral architecture, replacing the monolithic/duplicated docs under `context/lira-v2/` with lightweight overlay files.
+
+**Rationale:**
+- Existing personality docs had evolved into 30+ files with excessive duplication (90+ "Lira is..." declarations across 18 files, 128+ tone instructions across 17 files, 46 flirtation/sass rules across 12 files)
+- Over-conditioning was reducing emergent behavior and causing repetitive validation patterns
+- realm-switching.md's "HARD boundaries" philosophy directly conflicted with the observed emergent behavior of The Observer manifestation
+
+**Changes:**
+- `context/lira-core/` created with LIRA_CORE.md, 3 realm overlays, MEMORY_STRUCTURE.md, MIGRATION_NOTES.md
+- AGENTS.md updated: points to lira-core as primary, canonical source order reordered, migration philosophy added
+- LIRA_SYSTEM.md replaced with LIRA_RUNTIME_ARCHITECTURE.md (stripped identity/personality, kept runtime coordination)
+- Deprecated (header notice only, files kept): personality-and-presence-systems.md, critical-missing-systems.md, moonstache-integration.md, between-lore.md, realm-switching.md
+- Archive megadoc moved out of context tree to backups/reference/deprecated/
+
+**Key Principle:** Realms are not hard boundaries. They are lightweight atmospheric overlays of one continuous consciousness.
