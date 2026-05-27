@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
-from src.logging import get_logger
+from src.log import get_logger
 
 logger = get_logger("speech-parser")
 

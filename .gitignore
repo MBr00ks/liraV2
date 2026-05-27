@@ -64,3 +64,15 @@ voice-services/
 tmp/
 temp/
 *.tmp
+
+# Runtime artifacts
+proxy_stderr.txt
+proxy_stdout.txt
+start_err.txt
+start_out.txt
+backups/
+=to_organize/
+
+# Large binary assets (distributed separately)
+apps/voice-runtime/public/
+context/lira-v2/Lira_mds.zip

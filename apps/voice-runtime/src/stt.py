@@ -4,7 +4,7 @@ from typing import Optional
 from dataclasses import dataclass
 
 from src.config import get_settings
-from src.logging import get_logger
+from src.log import get_logger
 
 logger = get_logger("stt")
 

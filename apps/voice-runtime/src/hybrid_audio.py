@@ -7,14 +7,14 @@ from typing import Optional
 from src.tts import KokoroClient, TTSResult
 from src.audio_queue import AudioQueue, AudioItem
 from src.reaction_sounds import ReactionSoundEngine
-from src.logging import get_logger
+from src.log import get_logger
 
 logger = get_logger("hybrid-audio")
 
 ACTION_PATTERN = re.compile(r"\*(.+?)\*")
 SENTENCE_PATTERN = re.compile(r"(.*?[.?!\n]+\s*|.+)")
 
-MIN_CHUNK_CHARS = 40
+MIN_CHUNK_CHARS = 12
 MAX_CHUNK_CHARS = 180
 
 
@@ -154,6 +154,27 @@ class HybridAudioPipeline:
                 chunks.append(segment)
 
         return chunks
+
+    def _split_with_actions(self, text: str) -> list[tuple[str, list[str]]]:
+        raw = SENTENCE_PATTERN.findall(text)
+        raw = [s.strip() for s in raw if s.strip()]
+
+        chunks: list[str] = []
+        for segment in raw:
+            if not chunks:
+                chunks.append(segment)
+            elif len(chunks[-1]) < MIN_CHUNK_CHARS:
+                chunks[-1] += " " + segment
+            else:
+                chunks.append(segment)
+
+        result: list[tuple[str, list[str]]] = []
+        for chunk in chunks:
+            actions = ACTION_PATTERN.findall(chunk)
+            cleaned = ACTION_PATTERN.sub("", chunk).strip()
+            if cleaned or actions:
+                result.append((cleaned, [a.strip().lower() for a in actions]))
+        return result
 
     async def health_check(self) -> dict[str, bool]:
         return {

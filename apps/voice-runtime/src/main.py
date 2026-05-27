@@ -3,13 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from src.config import Settings, get_settings
-from src.logging import get_logger
-from src.obs_bridge import OBSBridge
+from src.log import get_logger
+from src.obs_instance import obs_bridge
 
 
 logger = get_logger("voice-runtime")
-
-obs_bridge = OBSBridge()
 
 
 @asynccontextmanager

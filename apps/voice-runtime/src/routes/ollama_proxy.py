@@ -5,7 +5,7 @@ from httpx import AsyncClient, Timeout
 from pydantic import BaseModel
 from typing import Optional
 
-from src.logging import get_logger
+from src.log import get_logger
 
 logger = get_logger("ollama-proxy")
 router = APIRouter()

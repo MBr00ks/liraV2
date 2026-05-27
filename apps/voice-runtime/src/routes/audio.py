@@ -7,7 +7,7 @@ from src.stt import WhisperClient
 from src.tts import KokoroClient
 from src.hybrid_audio import HybridAudioPipeline
 from src.reaction_sounds import ReactionSoundEngine
-from src.logging import get_logger, log_request
+from src.log import get_logger, log_request
 
 logger = get_logger("audio-route")
 

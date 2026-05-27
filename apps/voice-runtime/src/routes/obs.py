@@ -2,8 +2,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
 
-from src.main import obs_bridge
-from src.logging import get_logger
+from src.obs_instance import obs_bridge
+from src.log import get_logger
 
 logger = get_logger("obs-route")
 
