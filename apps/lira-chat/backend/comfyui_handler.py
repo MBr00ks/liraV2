@@ -11,9 +11,9 @@ logger = logging.getLogger("comfyui")
 
 COMFYUI_PLACEHOLDERS = {
     "%seed%": lambda: str(random.randint(0, 2 ** 32 - 1)),
-    "%steps%": lambda: "30",
-    "%width%": lambda: "1024",
-    "%height%": lambda: "1024",
+    "%steps%": lambda: "20",
+    "%width%": lambda: "896",
+    "%height%": lambda: "896",
     "%scale%": lambda: "5",
     "%sampler%": lambda: "dpmpp_2m",
     "%scheduler%": lambda: "karras",
@@ -77,14 +77,14 @@ class ComfyUIGenerator:
                 raise RuntimeError("ComfyUI did not return a prompt_id")
             logger.info(f"prompt queued: {prompt_id}")
 
-        deadline = asyncio.get_event_loop().time() + 120
+        deadline = asyncio.get_event_loop().time() + 300
         poll_count = 0
         async with httpx.AsyncClient(timeout=10) as client:
             while True:
                 remaining = deadline - asyncio.get_event_loop().time()
                 if remaining <= 0:
                     raise TimeoutError(
-                        "ComfyUI generation timed out after 120s — GPU may be busy with training"
+                        "ComfyUI generation timed out after 300s"
                     )
 
                 await asyncio.sleep(2)

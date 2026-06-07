@@ -17,11 +17,11 @@ SOURCE_FILE_RE = re.compile(r"giggles_low|giggles_medium", re.I)
 
 CATEGORY_KEYWORDS: dict[str, set[str]] = {
     "moans": {"moan", "moaning"},
-    "giggles": {"giggle", "giggling", "chuckle", "chuckling"},
+    "giggles": {"giggle", "giggling", "chuckle", "chuckling", "laugh", "laughing", "laughter", "snicker", "snickering"},
     "orgasms": {"orgasm", "climax", "cumming", "cum"},
     "blowjob": {"blowjob", "sucking", "deep throat", "oral", "cock", "dick"},
     "breaths": {"breath", "exhale", "inhale", "sigh", "pant", "panting", "breathing heavily", "out of breath", "breathless", "aroused", "excited", "gasp", "gasping", "startled", "surprise"},
-    "vocals": {"cough", "yawn", "shhh", "hush"},
+    "vocals": {"cough", "yawn", "shhh", "hush", "hmph", "grunt", "groan", "humph"},
 }
 
 CATEGORY_PITCH_SHIFT: dict[str, float] = {
@@ -112,6 +112,9 @@ class ReactionSoundEngine:
                 continue
             for kw in keywords:
                 if kw in action or action in kw:
+                    # Only match if action is short (pure reaction) or keyword starts the action
+                    if len(action) > 30 and not action.startswith(kw):
+                        continue
                     return random.choice([d for _, d in pool])
 
         return None

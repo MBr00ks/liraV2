@@ -69,16 +69,16 @@ export default function AudioControls({
         />
       </label>
 
-      <div className="text-xs text-zinc-600 border-t border-zinc-800 pt-2 space-y-1">
-        <label className="flex items-center justify-between">
-          <span>Web Search</span>
-          <span className="text-zinc-700">soon</span>
-        </label>
-        <label className="flex items-center justify-between">
-          <span>Memory</span>
-          <span className="text-zinc-700">soon</span>
-        </label>
-      </div>
+        <div className="text-xs text-zinc-600 border-t border-zinc-800 pt-2 space-y-1">
+          <label className="flex items-center justify-between">
+            <span>Web Search</span>
+            <span className="text-cyan-600">/search</span>
+          </label>
+          <label className="flex items-center justify-between">
+            <span>Memory</span>
+            <span className="text-zinc-700">soon</span>
+          </label>
+        </div>
     </div>
   );
 }

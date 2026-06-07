@@ -129,6 +129,7 @@ export default function WebSocketProvider({ children }: { children: ReactNode })
         });
         break;
       case "audio":
+        console.log("Audio chunk received, length:", msg.chunk.length);
         if (!interruptRef.current) audioRef.current.enqueue(msg.chunk, (msg as any).seq);
         break;
       case "done":
@@ -171,6 +172,19 @@ export default function WebSocketProvider({ children }: { children: ReactNode })
         break;
       case "mode_set":
         _setMode(msg.mode);
+        break;
+      case "image":
+        {
+          const blob = new Blob(
+            [Uint8Array.from(atob(msg.data), (c) => c.charCodeAt(0))],
+            { type: "image/png" }
+          );
+          const url = URL.createObjectURL(blob);
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: msg.prompt, streaming: false, image_url: url },
+          ]);
+        }
         break;
       case "tts_error":
         pushToast(msg.message, "error");

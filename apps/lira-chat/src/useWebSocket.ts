@@ -11,7 +11,8 @@ export type WSMessage =
   | { type: "mode_set"; mode: string }
   | { type: "system_set" }
   | { type: "history_cleared" }
-  | { type: "tts_error"; message: string };
+  | { type: "tts_error"; message: string }
+  | { type: "image"; data: string; filename: string; prompt: string };
 
 export type SendMessage =
   | { type: "message"; text: string }

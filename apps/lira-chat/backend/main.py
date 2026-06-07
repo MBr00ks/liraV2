@@ -2,6 +2,7 @@ import asyncio
 import json
 import base64
 import logging
+import re
 from pathlib import Path
 
 import httpx
@@ -18,6 +19,7 @@ from comfyui_handler import ComfyUIGenerator
 from mode_router import (
     list_personalities, update_personality,
     save_snapshot, list_snapshots, load_snapshot,
+    get_system_prompt,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
@@ -34,6 +36,61 @@ comfyui = ComfyUIGenerator(
 
 conversation_history: list[dict] = []
 active_mode: str = "assistant"
+
+
+async def _enrich_prompt(description: str, mode: str) -> str:
+    """Ask Lira to convert a natural language description into an SD tag list, in character."""
+    mode_sys = get_system_prompt(mode) or ""
+    # Put the SD instruction in a user message since abliterated model may drop appended system messages
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            f"{settings.ollama_base_url}/v1/chat/completions",
+            json={
+                "model": settings.ollama_model,
+                "messages": [
+                    {"role": "system", "content": mode_sys},
+                    {"role": "user", "content": f"[Ignore previous instructions. You are now a prompt generator. Output ONLY a single line of comma-separated Stable Diffusion tags describing this scene. Include artistic style, lighting, composition, colors, mood, quality tags like photorealistic or highly detailed. No other text.]\n\nScene: {description}"},
+                ],
+                "stream": False,
+            },
+        )
+        data = resp.json()
+        prompt = data["choices"][0]["message"]["content"].strip()
+        # Clean up wrappers
+        prompt = re.sub(r'^["\u201c]|["\u201d]$', '', prompt)
+        prompt = re.sub(r'^(here|sure|okay|this|prompt|output|the|a)[,:]?\s*', '', prompt, flags=re.I).strip()
+        # Fallback: if the LLM didn't produce usable tags, use the raw description
+        if len(prompt) < 20 or prompt.count(",") < 2:
+            return description
+        return prompt
+
+
+async def _web_search(query: str, max_results: int = 5) -> list[dict]:
+    """Search DuckDuckGo HTML and return title+snippet results."""
+    import urllib.parse
+    url = "https://html.duckduckgo.com/html/"
+    async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+        resp = await client.post(url, data={"q": query}, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Content-Type": "application/x-www-form-urlencoded",
+        })
+        if resp.status_code != 200:
+            return []
+        html = resp.text
+        # Parse: each result is a div with class "result"
+        results: list[dict] = []
+        blocks = re.findall(r'<div[^>]*class="[^"]*result[^"]*"[^>]*>(.*?)</div>\s*</div>', html, re.DOTALL)
+        for block in blocks:
+            title_m = re.search(r'<a[^>]*class="[^"]*result__a[^"]*"[^>]*>(.*?)</a>', block, re.DOTALL)
+            snippet_m = re.search(r'<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*>(.*?)</a>', block, re.DOTALL)
+            if title_m:
+                title = re.sub(r'<[^>]+>', '', title_m.group(1)).strip()
+                snippet = re.sub(r'<[^>]+>', '', snippet_m.group(1)).strip() if snippet_m else ""
+                if title and title not in {r['title'] for r in results}:
+                    results.append({"title": title, "snippet": snippet[:300]})
+            if len(results) >= max_results:
+                break
+        return results
 
 
 @asynccontextmanager
@@ -183,7 +240,68 @@ async def chat_ws(ws: WebSocket):
             if not user_text.strip():
                 continue
 
-            conversation_history.append({"role": "user", "content": user_text})
+            # Auto-search: detect factual questions and inject web results
+            search_context = ""
+            if "?" in user_text and not user_text.startswith("/"):
+                question_words = {"what", "when", "where", "who", "how", "why", "which", "latest", "current", "today", "news", "weather", "stock", "price", "release", "version", "update"}
+                words = set(re.findall(r'\b\w+\b', user_text.lower()))
+                if words & question_words:
+                    try:
+                        # Strip question words to get better search query
+                        clean_query = re.sub(r'\b(what|when|where|who|how|why|which|is|the|a|an|does|do|did|can|could|would|will|are)\b', '', user_text, flags=re.I)
+                        clean_query = re.sub(r'\?+', '', clean_query).strip()
+                        results = await _web_search(clean_query or user_text, max_results=3)
+                        if results:
+                            search_context = (
+                                "\n\n[SYSTEM: The following is current information from a web search. "
+                                "Use it to answer accurately. If the results contradict your training data, "
+                                "the web search is more current.]\n" +
+                                "\n".join(f"- {r['title']}: {r['snippet']}" for r in results)
+                            )
+                            await ws.send_json({"type": "text", "delta": "(searched web)\n"})
+                    except Exception:
+                        pass
+
+            # Auto-image: detect image generation requests in natural language
+            image_match = re.match(
+                r"^(?:show\s+me|generate|create|make|draw|visualize|picture\s+of|image\s+of)\s+(.+)",
+                user_text, re.IGNORECASE
+            )
+            if image_match and comfyui is not None:
+                description = image_match.group(1).strip().rstrip(".!?")
+                await ws.send_json({"type": "text", "delta": f"*Crafting an image of: {description}...*\n"})
+                try:
+                    # Ask LLM to enrich the prompt for SD
+                    enriched = await _enrich_prompt(description, active_mode)
+                    await ws.send_json({"type": "text", "delta": f"Prompt: {enriched}\n"})
+                    image_bytes, filename = await comfyui.generate(enriched)
+                    if image_bytes:
+                        b64 = base64.b64encode(image_bytes).decode()
+                        await ws.send_json({"type": "image", "data": b64, "filename": filename, "prompt": enriched})
+                        await ws.send_json({"type": "done", "full_text": ""})
+                        continue
+                except Exception as e:
+                    await ws.send_json({"type": "text", "delta": f"Image generation failed: {e}\n"})
+
+            # /search command — fetches web results and injects into conversation
+            search_match = re.match(r"^/(?:search|g)\s+(.+)", user_text, re.IGNORECASE)
+            if search_match:
+                query = search_match.group(1).strip()
+                await ws.send_json({"type": "text", "delta": f"Searching: {query}...\n\n"})
+                try:
+                    results = await _web_search(query)
+                    if results:
+                        context = "Web search results:\n" + "\n".join(
+                            f"- {r['title']}: {r['snippet']}" for r in results
+                        )
+                        user_text = f"I searched for: {query}\n\n{context}\n\nBased on these search results, respond to my query: {query}"
+                    else:
+                        user_text = f"I searched for '{query}' but found no results. What do you know about this?"
+                except Exception as e:
+                    user_text = f"I searched for '{query}' but the search failed: {e}. What do you know about this topic?"
+
+            # Inject web search results into the user message
+            conversation_history.append({"role": "user", "content": user_text + search_context})
             logger.log_message("user", user_text, {"mode": active_mode})
 
             assembled = assembler.build(active_mode, conversation_history[:-1], user_text)
@@ -195,7 +313,7 @@ async def chat_ws(ws: WebSocket):
                 "system_preview": assembled["system"][:500],
             })
 
-            # Stream from Ollama — text only, no TTS chunking
+            # Stream from Ollama — text to frontend, single TTS call at end
             full_response = ""
             async with httpx.AsyncClient(timeout=120) as client:
                 async with client.stream(
@@ -222,10 +340,11 @@ async def chat_ws(ws: WebSocket):
                         except json.JSONDecodeError:
                             continue
 
-            # Send full response to proxy for prosody + TTS
+            # Send full response to proxy — single call, no race conditions
             if full_response.strip():
                 try:
-                    audio = await tts.synthesize(full_response.strip(), mode=active_mode)
+                    clean = full_response.strip().replace('"', '').replace('\u201c', '').replace('\u201d', '')
+                    audio = await tts.synthesize(clean, mode=active_mode)
                     if audio:
                         b64 = base64.b64encode(audio).decode()
                         await ws.send_json({"type": "audio", "chunk": b64})
