@@ -18,8 +18,6 @@ class SynthesizeRequest(BaseModel):
     text: str
     voice: str = "bf_isabella"
     speed: float = 1.0
-    pitch: float = 0.0
-    volume: float = 0.0
     stream: bool = False
 
 

@@ -23,8 +23,6 @@ class KokoroClient:
         self.base_url = settings.kokoro_base_url.rstrip("/")
         self.default_voice = settings.kokoro_voice
         self.default_speed = settings.kokoro_speed
-        self.default_pitch = settings.kokoro_pitch
-        self.default_volume = settings.kokoro_volume
         self._client = httpx.AsyncClient(timeout=30.0)
         self._stream_client = httpx.AsyncClient(timeout=60.0)
 
@@ -33,15 +31,11 @@ class KokoroClient:
         text: str,
         voice: Optional[str] = None,
         speed: Optional[float] = None,
-        pitch: Optional[float] = None,
-        volume: Optional[float] = None,
     ) -> TTSResult:
         payload = {
             "text": text,
             "voice": voice or self.default_voice,
             "speed": speed if speed is not None else self.default_speed,
-            "pitch": pitch if pitch is not None else self.default_pitch,
-            "volume": volume if volume is not None else self.default_volume,
         }
 
         try:

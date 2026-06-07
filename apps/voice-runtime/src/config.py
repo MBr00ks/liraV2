@@ -7,10 +7,14 @@ class Settings(BaseSettings):
     kokoro_base_url: str = "http://localhost:19008"
     kokoro_voice: str = "bf_isabella"
     kokoro_speed: float = 1.0
-    kokoro_pitch: float = 0.0
-    kokoro_volume: float = 0.0
 
     xtts_base_url: str = ""
+
+    tts_backend: str = "kokoro"  # "kokoro" or "bark"
+
+    bark_base_url: str = "http://localhost:19009"
+    bark_voice_preset: str = "v2/en_speaker_6"
+    bark_model: str = "suno/bark-small"
 
     audio_sample_rate: int = 24000
     audio_chunk_size: int = 4096
