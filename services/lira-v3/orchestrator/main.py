@@ -55,8 +55,6 @@ class SessionState:
         return assembler.build(mode, self.history, user_text)
 
 
-session = SessionState()
-
 
 # --- Health monitor ---
 async def _health_check():
@@ -77,7 +75,7 @@ async def _health_check():
 
 
 # --- WebSocket chat handler ---
-async def _handle_chat(ws: WebSocket, user_text: str):
+async def _handle_chat(ws: WebSocket, user_text: str, session: SessionState):
     global active_mode
 
     session.add_user(user_text)
@@ -129,7 +127,7 @@ async def _handle_chat(ws: WebSocket, user_text: str):
             try:
                 await ws.send_json({"type": "tts_error", "message": f"TTS failed: {e}"})
             except Exception:
-                pass
+                logger.warning("Could not send TTS error to client")
 
     await ws.send_json({"type": "done", "full_text": full_response})
 
@@ -138,18 +136,21 @@ async def _handle_chat(ws: WebSocket, user_text: str):
 async def _handle_image(prompt: str) -> tuple[bytes, str]:
     from pathlib import Path
     import random
-    import re
 
     # Build workflow from template
     raw = Path(settings.comfyui_workflow_path).read_text(encoding="utf-8")
     s = raw.replace("%prompt%", prompt)
     s = s.replace("%seed%", str(random.randint(0, 2**32 - 1)))
     for key, val in {
-        "%steps%": "20", "%width%": "896", "%height%": "896",
-        "%scale%": "5", "%sampler%": "dpmpp_2m", "%scheduler%": "karras",
+        "%steps%": str(settings.comfyui_steps),
+        "%width%": str(settings.comfyui_width),
+        "%height%": str(settings.comfyui_height),
+        "%scale%": str(settings.comfyui_cfg_scale),
+        "%sampler%": settings.comfyui_sampler,
+        "%scheduler%": settings.comfyui_scheduler,
         "%denoise%": "1",
-        "%model%": "unrealvisionXLPhotoreal_realismUniversal.safetensors",
-        "%negative_prompt%": "worst quality, low quality, bad anatomy, deformed, blurry, watermark, text, signature",
+        "%model%": settings.comfyui_model,
+        "%negative_prompt%": settings.comfyui_negative,
     }.items():
         s = s.replace(key, val)
     workflow = json.loads(s)
@@ -159,8 +160,8 @@ async def _handle_image(prompt: str) -> tuple[bytes, str]:
         try:
             await client.post(f"{settings.comfyui_base_url}/interrupt")
             await client.post(f"{settings.comfyui_base_url}/queue", json={"clear": True})
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"ComfyUI queue clear skipped: {e}")
 
         # Submit prompt
         resp = await client.post(
@@ -270,6 +271,7 @@ async def lore_all():
 @app.websocket("/ws")
 async def chat_ws(ws: WebSocket):
     global active_mode
+    session = SessionState()
     await ws.accept()
     try:
         while True:
@@ -363,7 +365,7 @@ async def chat_ws(ws: WebSocket):
                     except Exception:
                         pass
 
-            await _handle_chat(ws, user_text + search_context)
+            await _handle_chat(ws, user_text + search_context, session)
 
     except WebSocketDisconnect:
         pass
@@ -386,7 +388,7 @@ async def api_generate_image(data: dict):
     if "lira_base" not in prompt.lower():
         person_words = {"portrait", "woman", "man", "person", "face", "fae", "elf", "character", "girl", "boy", "lady", "her", "him", "self", "lira", "female", "male", "human"}
         if any(w in prompt.lower() for w in person_words):
-            prompt = f"lira_base, {prompt}"
+            prompt = f"{settings.lora_trigger}, {prompt}"
     try:
         img_bytes, filename = await _handle_image(prompt)
         from fastapi.responses import Response

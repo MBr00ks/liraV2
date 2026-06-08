@@ -1,0 +1,9 @@
+INFO:     Started server process [6476]
+INFO:     Waiting for application startup.
+C:\Users\Mike Brooks\Documents\projects\liraV2\services\kokoro-tts\.venv\Lib\site-packages\torch\nn\modules\rnn.py:1009: UserWarning: dropout option adds dropout after all but last recurrent layer, so non-zero dropout expects num_layers greater than 1, but got dropout=0.2 and num_layers=1
+  super().__init__("LSTM", *args, **kwargs)
+C:\Users\Mike Brooks\Documents\projects\liraV2\services\kokoro-tts\.venv\Lib\site-packages\torch\nn\utils\weight_norm.py:144: FutureWarning: `torch.nn.utils.weight_norm` is deprecated in favor of `torch.nn.utils.parametrizations.weight_norm`.
+  WeightNorm.apply(module, name, dim)
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:19008 (Press CTRL+C to quit)

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from "react";
-import type { TransportAdapter } from "../transport/TransportAdapter";
+import type { TransportAdapter, IncomingMessage } from "../transport/TransportAdapter";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -57,7 +57,7 @@ export function ChatProvider({
 
   useEffect(() => { connect(); }, [connect]);
 
-  transport.onMessage(useCallback((msg: any) => {
+  transport.onMessage(useCallback((msg: IncomingMessage) => {
     switch (msg.type) {
       case "text":
         setMessages((prev) => {

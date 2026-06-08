@@ -61,7 +61,7 @@ class ReactionSoundEngine:
 
     def _scan_directory(self) -> None:
         if not os.path.isdir(self.sound_dir):
-            logger.warn("Reaction sound directory not found", {"path": self.sound_dir})
+            logger.warning("Reaction sound directory not found", extra={"path": self.sound_dir})
             return
 
         count = 0

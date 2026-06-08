@@ -33,7 +33,9 @@ export function createWebSocketTransport(
         try {
           const msg: IncomingMessage = JSON.parse(event.data);
           for (const h of handlers) h(msg);
-        } catch { /* ignore */ }
+        } catch {
+          console.warn("WebSocketTransport: failed to parse message", event.data.slice(0, 100));
+        }
       };
     });
   }

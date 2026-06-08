@@ -2,6 +2,7 @@
 import json
 import logging
 import time
+from typing import AsyncGenerator
 
 import httpx
 
@@ -15,10 +16,10 @@ class LLMClient:
         self._ollama_url = f"{settings.ollama_base_url}/v1/chat/completions"
         self._model = settings.ollama_model
         self._fallback_key = settings.openrouter_api_key
-        self._fallback_model = "mistralai/mistral-nemo"
+        self._fallback_model = settings.openrouter_fallback_model
         self._threshold_ms = settings.llm_fallback_threshold_ms
 
-    async def stream(self, system_prompt: str, messages: list[dict]):
+    async def stream(self, system_prompt: str, messages: list[dict[str, str]]) -> AsyncGenerator[str | None, None]:
         """Stream from Ollama, falling back to OpenRouter if latency exceeds threshold."""
         full_messages = [{"role": "system", "content": system_prompt}] + messages
 
@@ -59,7 +60,7 @@ class LLMClient:
             else:
                 raise
 
-    async def stream_fallback(self, system_prompt: str, messages: list[dict]):
+    async def stream_fallback(self, system_prompt: str, messages: list[dict[str, str]]) -> AsyncGenerator[str, None]:
         """Stream from OpenRouter cloud fallback."""
         full_messages = [{"role": "system", "content": system_prompt}] + messages
         async with httpx.AsyncClient(timeout=60) as client:
@@ -67,7 +68,7 @@ class LLMClient:
                 "POST", "https://openrouter.ai/api/v1/chat/completions",
                 headers={
                     "Authorization": f"Bearer {self._fallback_key}",
-                    "HTTP-Referer": "http://localhost:8100",
+                    "HTTP-Referer": f"http://localhost:{settings.port}",
                     "X-Title": "Lira V2.5",
                 },
                 json={

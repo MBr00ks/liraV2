@@ -31,9 +31,9 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   });
   const [debugVisible, setDebugVisible] = useState(false);
 
-  useEffect(() => { try { localStorage.setItem("lira_tts", String(ttsEnabled)); } catch { /* */ } }, [ttsEnabled]);
-  useEffect(() => { try { localStorage.setItem("lira_reactions", String(reactionsEnabled)); } catch { /* */ } }, [reactionsEnabled]);
-  useEffect(() => { try { localStorage.setItem("lira_pause", String(pauseMultiplier)); } catch { /* */ } }, [pauseMultiplier]);
+  useEffect(() => { try { localStorage.setItem("lira_tts", String(ttsEnabled)); } catch { console.warn("AudioProvider: localStorage unavailable"); } }, [ttsEnabled]);
+  useEffect(() => { try { localStorage.setItem("lira_reactions", String(reactionsEnabled)); } catch { console.warn("AudioProvider: localStorage unavailable"); } }, [reactionsEnabled]);
+  useEffect(() => { try { localStorage.setItem("lira_pause", String(pauseMultiplier)); } catch { console.warn("AudioProvider: localStorage unavailable"); } }, [pauseMultiplier]);
 
   return (
     <Ctx.Provider value={{

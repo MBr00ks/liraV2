@@ -87,8 +87,6 @@ MODE_VOICES: dict[str, list[str]] = {
     "observer": ["bf_isabella"],
 }
 
-PAUSE_HINT_PAUSE = 0.600  # extra pause when ... or — detected
-
 QUESTION_KEYWORDS = {
     "what", "how", "why", "when", "where", "who", "which",
     "do you", "does", "is it", "are you", "can you", "could you",
@@ -125,7 +123,7 @@ CONCERNED_KEYWORDS = {
 }
 
 
-def classify_chunk(text: str, is_last_chunk: bool = False) -> ProsodyProfile:
+def classify_chunk(text: str) -> ProsodyProfile:
     stripped = text.strip()
     lower = stripped.lower()
 
