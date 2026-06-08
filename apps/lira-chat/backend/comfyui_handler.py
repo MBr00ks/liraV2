@@ -19,7 +19,7 @@ COMFYUI_PLACEHOLDERS = {
     "%scheduler%": lambda: "karras",
     "%denoise%": lambda: "1",
     "%model%": lambda: "unrealvisionXLPhotoreal_realismUniversal.safetensors",
-    "%negative_prompt%": lambda: "worst quality, low quality, bad anatomy, deformed, blurry, watermark, text, signature, extra limbs, ugly, poorly drawn",
+    "%negative_prompt%": lambda: "worst quality, low quality, bad anatomy, deformed, blurry, watermark, text, signature, extra limbs, ugly, poorly drawn, asian, monolids, flat nose",
 }
 
 DEFAULT_NEGATIVE = "worst quality, low quality, bad anatomy, deformed, blurry, watermark, text, signature, extra limbs, ugly, poorly drawn"

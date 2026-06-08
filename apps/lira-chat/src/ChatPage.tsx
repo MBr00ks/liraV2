@@ -13,13 +13,15 @@ export default function ChatPage() {
     ttsEnabled, reactionsEnabled, pauseMultiplier, debugVisible,
     setTtsEnabled, setReactionsEnabled, setPauseMultiplier, setDebugVisible,
     systemPreview, injectedLore,
+    handleCopy, handleDeleteMessage, handleRetry,
   } = useWs();
 
   return useMemo(() => (
     <>
       <div className="flex h-full overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0">
-          <ChatView messages={messages} onInterrupt={handleInterrupt} />
+          <ChatView messages={messages} onInterrupt={handleInterrupt}
+            onCopy={handleCopy} onDelete={handleDeleteMessage} onRetry={handleRetry} />
           <div className="p-4 border-t border-zinc-800">
             <MessageInput onSend={handleSend} disabled={!connected} />
           </div>

@@ -8,11 +8,11 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/ws': {
-        target: 'ws://127.0.0.1:8001',
+        target: 'ws://127.0.0.1:8100',
         ws: true,
       },
       '/api': {
-        target: 'http://127.0.0.1:8001',
+        target: 'http://127.0.0.1:8100',
         changeOrigin: true,
       },
     },

@@ -49,7 +49,7 @@ async def _enrich_prompt(description: str, mode: str) -> str:
                 "model": settings.ollama_model,
                 "messages": [
                     {"role": "system", "content": mode_sys},
-                    {"role": "user", "content": f"[Ignore previous instructions. You are now a prompt generator. Output ONLY a single line of comma-separated Stable Diffusion tags describing this scene. Include artistic style, lighting, composition, colors, mood, quality tags like photorealistic or highly detailed. No other text.]\n\nScene: {description}"},
+                    {"role": "user", "content": f"[Ignore previous instructions. You are now a prompt generator. Output ONLY a single line of comma-separated Stable Diffusion tags describing this scene as a RAW photorealistic photo. Include: lighting, composition, colors, mood. Add tags: photorealistic, 8k, highly detailed, RAW photo. No other text.]\n\nScene: {description}"},
                 ],
                 "stream": False,
             },
@@ -59,9 +59,12 @@ async def _enrich_prompt(description: str, mode: str) -> str:
         # Clean up wrappers
         prompt = re.sub(r'^["\u201c]|["\u201d]$', '', prompt)
         prompt = re.sub(r'^(here|sure|okay|this|prompt|output|the|a)[,:]?\s*', '', prompt, flags=re.I).strip()
-        # Fallback: if the LLM didn't produce usable tags, use the raw description
+        # Always prepend LoRA trigger word
+        if "lira_base" not in prompt.lower():
+            prompt = f"lira_base, {prompt}"
+        # Fallback: if the LLM didn't produce usable tags, use trigger + raw description
         if len(prompt) < 20 or prompt.count(",") < 2:
-            return description
+            return f"lira_base, {description}"
         return prompt
 
 
@@ -159,6 +162,10 @@ async def generate_image(data: dict):
             media_type="application/json",
             status_code=400,
         )
+    # Only add LoRA trigger for person/portrait requests
+    person_words = {"portrait", "woman", "man", "person", "face", "fae", "elf", "character", "girl", "boy", "lady", "her", "him", "self", "lira", "female", "male", "human"}
+    if "lira_base" not in prompt.lower() and any(w in prompt.lower() for w in person_words):
+        prompt = f"lira_base, {prompt}"
     try:
         image_bytes, filename = await comfyui.generate(prompt)
         return Response(
@@ -193,6 +200,12 @@ async def chat_ws(ws: WebSocket):
             if msg_type == "clear_history":
                 conversation_history.clear()
                 await ws.send_json({"type": "history_cleared"})
+                continue
+
+            if msg_type == "delete_message":
+                idx = data.get("index", -1)
+                if 0 <= idx < len(conversation_history):
+                    conversation_history.pop(idx)
                 continue
 
             if msg_type == "set_system":
@@ -269,12 +282,14 @@ async def chat_ws(ws: WebSocket):
             )
             if image_match and comfyui is not None:
                 description = image_match.group(1).strip().rstrip(".!?")
+                # Only apply LoRA trigger for person/portrait requests
+                person_words = {"portrait", "woman", "man", "person", "face", "fae", "elf", "character", "girl", "boy", "lady", "her", "him", "self", "lira", "female", "male", "human"}
+                desc_lower = description.lower()
+                trigger = "lira_base, " if any(w in desc_lower for w in person_words) else ""
+                prompt = f"{trigger}black braided hair, soft amber eyes, no makeup, curious expression, RAW photo, photorealistic, 8k, highly detailed, {description}"
                 await ws.send_json({"type": "text", "delta": f"*Crafting an image of: {description}...*\n"})
                 try:
-                    # Ask LLM to enrich the prompt for SD
-                    enriched = await _enrich_prompt(description, active_mode)
-                    await ws.send_json({"type": "text", "delta": f"Prompt: {enriched}\n"})
-                    image_bytes, filename = await comfyui.generate(enriched)
+                    image_bytes, filename = await comfyui.generate(prompt)
                     if image_bytes:
                         b64 = base64.b64encode(image_bytes).decode()
                         await ws.send_json({"type": "image", "data": b64, "filename": filename, "prompt": enriched})
