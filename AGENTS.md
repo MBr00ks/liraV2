@@ -10,6 +10,38 @@ Agents must treat Lira as a modular identity system with replaceable infrastruct
 
 Do not hardcode Lira's personality into runtime code.
 
+## Zero-Shortcuts Engineering Directive
+
+This project ships to production. Every decision must be justified. No guesswork. No "fix it later." No copy-paste without understanding. If you do not know the best practice for a given technology, research it before implementing.
+
+### Implementation Standards
+
+1. **Research-first** — Before adopting a library, protocol, or pattern, verify it against official documentation and community consensus. Prefer the vendor's recommended approach over convenience.
+2. **No dead code** — If a code path is unreachable or a parameter is unused, remove it. Stale code is technical debt.
+3. **One source of truth** — Configuration lives in `.env` or canonical config files. Never duplicate logic across modules.
+4. **Errors must surface** — Silent `except: pass` is forbidden without explicit justification. Log or propagate failures.
+5. **Type safety** — Python: type hints on all public functions. TypeScript: strict mode, no `any` without comment.
+6. **Transport abstraction** — Never couple business logic to a specific transport (WebSocket, NATS, HTTP). Always use an adapter interface.
+7. **Health checks** — Every service exposes a `/health` endpoint. The orchestrator verifies all services at startup.
+8. **Session isolation** — Conversation state is per-connection, not global. Even for single-user apps, use a session object.
+9. **Proxy, don't bypass** — All frontend traffic goes through the dev server proxy. Direct port connections are a last resort.
+10. **Test the happy path** — After every change, verify the core flow works end-to-end. A working pipeline is the minimum bar.
+
+### When You Do Not Know
+
+- Search official documentation first (MDN, Python docs, library docs)
+- Check GitHub issues/discussions for the library
+- Prefer patterns used by the library's own examples
+- If multiple valid approaches exist, choose the one with the fewest dependencies
+
+### Anti-Patterns (Do Not Repeat)
+
+- Message duplication in conversation history (fixed: session object with single append point)
+- Sampling parameters as band-aid for prompt bugs (fixed: proper message ordering)
+- Direct port connections bypassing the dev proxy (fixed: proper proxy config with `0.0.0.0` bind)
+- Dead `pitch`/`volume` parameters in Kokoro (removed: KPipeline does not support them)
+- Action-to-speech fallback speaking `*actions*` aloud (removed: unmatched actions are silent)
+
 Personality belongs in:
 - `context/lira-v2/personality/canonical-rules.md`
 - `context/lira-v2/personality/lira-character-sheet.md`

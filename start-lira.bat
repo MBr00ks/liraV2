@@ -23,7 +23,7 @@ timeout /t 3 >nul
 
 REM --- Lira V2.5 Orchestrator (:8100) ---
 echo [4/6] Starting Lira Orchestrator...
-start "Orchestrator" /min cmd /c "set PYTHONPATH=services\lira-v3&& apps\voice-runtime\.venv\Scripts\python.exe -X utf8 -m uvicorn orchestrator.main:app --host 127.0.0.1 --port 8100"
+start "Orchestrator" /min cmd /c "set PYTHONPATH=services\lira-v3&& apps\voice-runtime\.venv\Scripts\python.exe -X utf8 -m uvicorn orchestrator.main:app --host 0.0.0.0 --port 8100"
 timeout /t 3 >nul
 
 REM --- ComfyUI (:8188) ---

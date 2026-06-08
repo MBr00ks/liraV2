@@ -74,7 +74,7 @@ class LLMClient:
                     "model": self._fallback_model,
                     "messages": full_messages,
                     "stream": True,
-                },
+                    },
             ) as resp:
                 async for line in resp.aiter_lines():
                     if not line.startswith("data: "):

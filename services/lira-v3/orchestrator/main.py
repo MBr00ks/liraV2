@@ -29,8 +29,33 @@ logger = logging.getLogger("orchestrator")
 lore_mgr = LoreManager(settings.lore_path)
 assembler = PromptAssembly(lore_mgr)
 llm = LLMClient()
-conversation_history: list[dict] = []
 active_mode: str = "assistant"
+
+
+class SessionState:
+    """Per-connection conversation state. Global is fine for single-user local app."""
+    def __init__(self):
+        self.history: list[dict] = []
+
+    def add_user(self, text: str):
+        self.history.append({"role": "user", "content": text})
+
+    def add_assistant(self, text: str):
+        self.history.append({"role": "assistant", "content": text})
+
+    def clear(self):
+        self.history.clear()
+
+    def delete(self, index: int):
+        if 0 <= index < len(self.history):
+            self.history.pop(index)
+
+    def build_prompt(self, mode: str, user_text: str) -> dict:
+        """Build prompt with proper message ordering — user appears once."""
+        return assembler.build(mode, self.history, user_text)
+
+
+session = SessionState()
 
 
 # --- Health monitor ---
@@ -55,8 +80,8 @@ async def _health_check():
 async def _handle_chat(ws: WebSocket, user_text: str):
     global active_mode
 
-    # Build prompt
-    assembled = assembler.build(active_mode, conversation_history, user_text)
+    session.add_user(user_text)
+    assembled = session.build_prompt(active_mode, user_text)
 
     # Send lore debug
     await ws.send_json({
@@ -79,8 +104,7 @@ async def _handle_chat(ws: WebSocket, user_text: str):
         full_response += delta
         await ws.send_json({"type": "text", "delta": delta})
 
-    conversation_history.append({"role": "user", "content": user_text})
-    conversation_history.append({"role": "assistant", "content": full_response})
+    session.add_assistant(full_response)
 
     # TTS — send full response to voice proxy
     if full_response.strip():
@@ -259,7 +283,7 @@ async def chat_ws(ws: WebSocket):
                 continue
 
             if msg_type == "clear_history":
-                conversation_history.clear()
+                session.clear()
                 await ws.send_json({"type": "history_cleared"})
                 continue
 
@@ -339,7 +363,6 @@ async def chat_ws(ws: WebSocket):
                     except Exception:
                         pass
 
-            conversation_history.append({"role": "user", "content": user_text + search_context})
             await _handle_chat(ws, user_text + search_context)
 
     except WebSocketDisconnect:
